@@ -31,6 +31,7 @@ To generate the `network.c`, `network_ecblobs.h`, and the file containing networ
 ```bash
 cd Model
 stedgeai generate --no-inputs-allocation --no-outputs-allocation --model yolov8n_256_quant_pc_uf_pose_coco-st.tflite --target stm32n6 --st-neural-art default@user_neuralart.json
+cp st_ai_output/network.h .
 cp st_ai_output/network_ecblobs.h .
 cp st_ai_output/network.c .
 cp st_ai_output/network_atonbuf.xSPI2.raw network_data.xSPI2.bin

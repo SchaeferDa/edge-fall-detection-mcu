@@ -23,15 +23,15 @@ This application is prebuilt with a multi pose estimation model "YOLOv8 pose mod
 
 | Name                          | Version             | Release notes
 |-----                          | -------             | -------------
-| STM32Cube.AI runtime          | 10.1.0              | [release notes](Lib/AI_Runtime/README.md)
-| Camera Middleware             | v1.4.2              | [release notes](Lib/Camera_Middleware/Release_Notes.md)
-| lib_vision_models_pp Library  | v0.8.0              | [release notes](Lib/lib_vision_models_pp/lib_vision_models_pp/README.md)
+| STM32Cube.AI runtime          | 10.2.0              | [release notes](Lib/AI_Runtime/README.md)
+| Camera Middleware             | v1.4.3              | [release notes](Lib/Camera_Middleware/Release_Notes.md)
+| lib_vision_models_pp Library  | v0.10.0             | [release notes](Lib/lib_vision_models_pp/lib_vision_models_pp/README.md)
 | tracker                       | v1.0.0              | [release notes](Lib/tracker/Release_Notes.html)
-| post process wrapper          | v1.0.2              | [release notes](Lib/ai-postprocessing-wrapper/Release_Notes.html)
+| post process wrapper          | v1.0.7              | [release notes](Lib/ai-postprocessing-wrapper/Release_Notes.html)
 | CMSIS                         | V5.9.0              | [release notes](STM32Cube_FW_N6/Drivers/CMSIS/Documentation/index.html)
-| STM32N6xx CMSIS Device        | V1.1.0              | [release notes](STM32Cube_FW_N6/Drivers/CMSIS/Device/ST/STM32N6xx/Release_Notes.html)
-| STM32N6xx HAL/LL Drivers      | V1.1.0              | [release notes](STM32Cube_FW_N6/Drivers/STM32N6xx_HAL_Driver/Release_Notes.html)
-| STM32N6570-DK BSP Drivers     | V1.1.0              | [release notes](STM32Cube_FW_N6/Drivers/BSP/STM32N6570-DK/Release_Notes.html)
+| STM32N6xx CMSIS Device        | V1.2.0              | [release notes](STM32Cube_FW_N6/Drivers/CMSIS/Device/ST/STM32N6xx/Release_Notes.html)
+| STM32N6xx HAL/LL Drivers      | V1.2.0              | [release notes](STM32Cube_FW_N6/Drivers/STM32N6xx_HAL_Driver/Release_Notes.html)
+| STM32N6570-DK BSP Drivers     | V1.2.0              | [release notes](STM32Cube_FW_N6/Drivers/BSP/STM32N6570-DK/Release_Notes.html)
 | BSP Component aps256xx        | V1.0.6              | [release notes](STM32Cube_FW_N6/Drivers/BSP/Components/aps256xx/Release_Notes.html)
 | BSP Component Common          | V7.3.0              | [release notes](STM32Cube_FW_N6/Drivers/BSP/Components/Common/Release_Notes.html)
 | BSP Component mx66uw1g45g     | V1.1.0              | [release notes](STM32Cube_FW_N6/Drivers/BSP/Components/mx66uw1g45g/Release_Notes.html)
@@ -41,6 +41,14 @@ This application is prebuilt with a multi pose estimation model "YOLOv8 pose mod
 | lcd Utility                   | V2.2.0              | [release notes](STM32Cube_FW_N6/Utilities/lcd/Release_Notes.html)
 
 ## Update history
+
+### V2.1.0 / August 2025
+
+- Update STEdgeAI to `v2.2.0` (incl. STM32Cube.AI runtime `v10.2.0`)
+- Update lib_vision_models_pp to `v0.10.0`
+- Update post process wrapper to `v1.0.7`
+- Update Camera Middleware to `v1.4.3`
+- Update STM32Cube_FW_N6 to `V1.2.0`
 
 ### V2.0.0 / May 2025
 

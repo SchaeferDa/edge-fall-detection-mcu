@@ -93,7 +93,7 @@ void CAM_Init(void)
   cam_conf.pixel_format = 0; /* Default; Not implemented yet */
   cam_conf.anti_flicker = 0;
   cam_conf.mirror_flip = CAMERA_FLIP;
-  ret = CMW_CAMERA_Init(&cam_conf);
+  ret = CMW_CAMERA_Init(&cam_conf, NULL);
   assert(ret == CMW_ERROR_NONE);
 
   /* cam_conf.width / cam_conf.height now contains choose resolution */

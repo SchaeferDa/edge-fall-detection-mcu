@@ -23,7 +23,7 @@
 #include "app_cam.h"
 #include "app_config.h"
 #include "app_postprocess.h"
-#include "ll_aton_runtime.h"
+#include "ll_aton_rt_user_api.h"
 #include "cmw_camera.h"
 #include "stm32n6570_discovery_lcd.h"
 #include "stm32_lcd.h"
@@ -37,6 +37,7 @@
 #include "pkf.h"
 #include "tracker.h"
 #endif
+#include "network.h"
 #include "utils.h"
 
 #define FREERTOS_PRIORITY(p) ((UBaseType_t)((int)tskIDLE_PRIORITY + configMAX_PRIORITIES / 2 + (p)))
@@ -70,7 +71,7 @@
 #define DISPLAY_BUFFER_NB (DISPLAY_DELAY + 2)
 
 /* Align so we are sure nn_output_buffers[0] and nn_output_buffers[1] are aligned on 32 bytes */
-#define NN_BUFFER_OUT_SIZE_ALIGN ALIGN_VALUE(NN_BUFFER_OUT_SIZE, 32)
+#define NN_BUFFER_OUT_SIZE_ALIGN ALIGN_VALUE(LL_ATON_DEFAULT_OUT_1_SIZE_BYTES, 32)
 
 #ifdef TRACKER_MODULE
 typedef struct {
@@ -797,10 +798,26 @@ static void Display_NetworkOutput(display_info_t *info)
     Display_NetworkOutput_NoTracking(info);
 }
 
+static void inference_run(NN_Instance_TypeDef *network_instance)
+{
+  LL_ATON_RT_RetValues_t ll_aton_rt_ret;
+
+  do {
+    /* Execute first/next step of Cube.AI/ATON runtime */
+    ll_aton_rt_ret = LL_ATON_RT_RunEpochBlock(network_instance);
+    /* Wait for next event */
+    if (ll_aton_rt_ret == LL_ATON_RT_WFE)
+    {
+        LL_ATON_OSAL_WFE();
+    }
+  } while (ll_aton_rt_ret != LL_ATON_RT_DONE);
+  LL_ATON_RT_Reset_Network(network_instance);
+}
+
 static void nn_thread_fct(void *arg)
 {
-  const LL_Buffer_InfoTypeDef *nn_out_info = LL_ATON_Output_Buffers_Info_Default();
-  const LL_Buffer_InfoTypeDef *nn_in_info = LL_ATON_Input_Buffers_Info_Default();
+  const LL_Buffer_InfoTypeDef *nn_out_info = LL_ATON_Output_Buffers_Info(&NN_Instance_Default);
+  const LL_Buffer_InfoTypeDef *nn_in_info = LL_ATON_Input_Buffers_Info(&NN_Instance_Default);
   uint32_t nn_period_ms;
   uint32_t nn_period[2];
   uint8_t *nn_pipe_dst;
@@ -810,11 +827,16 @@ static void nn_thread_fct(void *arg)
   uint32_t ts;
   int ret;
 
+  /* Initialize Cube.AI/ATON ... */
+  LL_ATON_RT_RuntimeInit();
+  /* ... and model instance */
+  LL_ATON_RT_Init_Network(&NN_Instance_Default);
+
   /* setup buffers size */
   nn_in_len = LL_Buffer_len(&nn_in_info[0]);
   nn_out_len = LL_Buffer_len(&nn_out_info[0]);
   //printf("nn_out_len = %d\n", nn_out_len);
-  assert(nn_out_len == NN_BUFFER_OUT_SIZE);
+  assert(nn_out_len == LL_ATON_DEFAULT_OUT_1_SIZE_BYTES);
 
   /*** App Loop ***************************************************************/
   nn_period[1] = HAL_GetTick();
@@ -838,14 +860,14 @@ static void nn_thread_fct(void *arg)
 
     /* run ATON inference */
     ts = HAL_GetTick();
-     /* Note that we don't need to clean/invalidate those input buffers since they are only access in hardware */
+    /* Note that we don't need to clean/invalidate those input buffers since they are only access in hardware */
     ret = LL_ATON_Set_User_Input_Buffer_Default(0, capture_buffer, nn_in_len);
     assert(ret == LL_ATON_User_IO_NOERROR);
-     /* Invalidate output buffer before Hw access it */
+    /* Invalidate output buffer before Hw access it */
     CACHE_OP(SCB_InvalidateDCache_by_Addr(output_buffer, nn_out_len));
     ret = LL_ATON_Set_User_Output_Buffer_Default(0, output_buffer, nn_out_len);
     assert(ret == LL_ATON_User_IO_NOERROR);
-    LL_ATON_RT_Main(&NN_Instance_Default);
+    inference_run(&NN_Instance_Default);
     inf_ms = HAL_GetTick() - ts;
 
     /* release buffers */
@@ -1004,11 +1026,11 @@ static int app_tracking(mpe_pp_out_t *pp)
 static void pp_thread_fct(void *arg)
 {
 #if POSTPROCESS_TYPE == POSTPROCESS_OD_YOLO_V2_UF
-  yolov2_pp_static_param_t pp_params;
+  od_yolov2_pp_static_param_t pp_params;
 #elif POSTPROCESS_TYPE == POSTPROCESS_OD_YOLO_V5_UU
-  yolov5_pp_static_param_t pp_params;
+  od_yolov5_pp_static_param_t pp_params;
 #elif POSTPROCESS_TYPE == POSTPROCESS_OD_YOLO_V8_UF || POSTPROCESS_TYPE == POSTPROCESS_OD_YOLO_V8_UI
-  yolov8_pp_static_param_t pp_params;
+  od_yolov8_pp_static_param_t pp_params;
 #elif POSTPROCESS_TYPE == POSTPROCESS_POSE_YOLO_V8_UF
   yolov8_pose_pp_static_param_t pp_params;
 #elif POSTPROCESS_TYPE == POSTPROCESS_MPE_YOLO_V8_UF
@@ -1029,7 +1051,7 @@ static void pp_thread_fct(void *arg)
 
   (void)tracking_enabled;
   /* setup post process */
-  app_postprocess_init(&pp_params);
+  app_postprocess_init(&pp_params, &NN_Instance_Default);
   while (1)
   {
     uint8_t *output_buffer;

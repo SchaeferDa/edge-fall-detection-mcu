@@ -104,7 +104,7 @@ C_DEFS += -DTX_MAX_PARALLEL_NETWORKS=1
 
 # C includes
 # Patched files
-C_INCLUDES += -IInc
+C_INCLUDES += -IInc -IModel
 
 
 ASFLAGS = $(MCU) $(AS_DEFS) $(AS_INCLUDES) $(OPT) -Wall -fstack-usage -fdata-sections -ffunction-sections -fcyclomatic-complexity

@@ -364,6 +364,7 @@
                 <option>
                     <name>CCIncludePath2</name>
                     <state>$PROJ_DIR$\..\Inc</state>
+                    <state>$PROJ_DIR$\..\Model</state>
                     <state>$PROJ_DIR$\..\STM32Cube_FW_N6\Drivers\STM32N6xx_HAL_Driver\Inc</state>
                     <state>$PROJ_DIR$\..\STM32Cube_FW_N6\Drivers\STM32N6xx_HAL_Driver\Inc\Legacy</state>
                     <state>$PROJ_DIR$\..\STM32Cube_FW_N6\Drivers\CMSIS\Device\ST\STM32N6xx\Include</state>
@@ -891,7 +892,7 @@
                 </option>
                 <option>
                     <name>IlinkAdditionalLibs</name>
-                    <state>$PROJ_DIR$\..\Lib\AI_Runtime\Lib\ABI2.1\ARMCortexM55\NetworkRuntime1010_CM55_IAR.a</state>
+                    <state>$PROJ_DIR$\..\Lib\AI_Runtime\Lib\ABI2.1\ARMCortexM55\NetworkRuntime1020_CM55_IAR.a</state>
                     <state>$PROJ_DIR$\..\Lib\Camera_Middleware\ISP_Library\evision\Lib\libn6-evision-awb_iar.a</state>
                     <state>$PROJ_DIR$\..\Lib\Camera_Middleware\ISP_Library\evision\Lib\libn6-evision-st-ae_iar.a</state>
                 </option>

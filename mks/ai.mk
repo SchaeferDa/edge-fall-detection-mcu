@@ -46,5 +46,5 @@ C_SOURCES += $(C_SOURCES_AI)
 C_INCLUDES += $(C_INCLUDES_AI)
 C_DEFS += $(C_DEFS_AI)
 LIBDIR += -L$(AI_REL_DIR)/Lib/GCC/ARMCortexM55
-LIBS += -l:NetworkRuntime1010_CM55_GCC.a
-LIBS_IAR += $(AI_REL_DIR)/Lib/ABI2.1/ARMCortexM55/NetworkRuntime1010_CM55_IAR.a
+LIBS += -l:NetworkRuntime1020_CM55_GCC.a
+LIBS_IAR += $(AI_REL_DIR)/Lib/ABI2.1/ARMCortexM55/NetworkRuntime1020_CM55_IAR.a

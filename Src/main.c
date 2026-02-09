@@ -102,7 +102,6 @@ static void NPURam_enable()
 
 static void NPUCache_config()
 {
-  npu_cache_init();
   npu_cache_enable();
 }
 
@@ -377,7 +376,7 @@ HAL_StatusTypeDef MX_DCMIPP_ClockConfig(DCMIPP_HandleTypeDef *hdcmipp)
   return HAL_OK;
 }
 
-void HAL_CACHEAXI_MspInit(CACHEAXI_HandleTypeDef *hcacheaxi)
+void npu_cache_enable_clocks_and_reset(void)
 {
   __HAL_RCC_CACHEAXIRAM_MEM_CLK_ENABLE();
   __HAL_RCC_CACHEAXI_CLK_ENABLE();
@@ -385,7 +384,7 @@ void HAL_CACHEAXI_MspInit(CACHEAXI_HandleTypeDef *hcacheaxi)
   __HAL_RCC_CACHEAXI_RELEASE_RESET();
 }
 
-void HAL_CACHEAXI_MspDeInit(CACHEAXI_HandleTypeDef *hcacheaxi)
+void npu_cache_disable_clocks_and_reset(void)
 {
   __HAL_RCC_CACHEAXIRAM_MEM_CLK_DISABLE();
   __HAL_RCC_CACHEAXI_CLK_DISABLE();

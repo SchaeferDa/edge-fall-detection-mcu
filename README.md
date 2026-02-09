@@ -33,10 +33,11 @@ This top readme gives an overview of the app. Additional documentation is availa
   - The board should be connected to the onboard ST-LINK debug adapter CN6 with a __USB-C to USB-C cable to ensure sufficient power__
   - OTP fuses are set in this example for xSPI IOs to get the maximum speed (200MHz) on xSPI interfaces.
 
-- 3 Cameras are supported:
+- 4 Cameras are supported:
   - MB1854B IMX335 (Default Camera provided with the MB1939 STM32N6570-DK board)
-  - STEVAL-55G1MBI VD55G1 Camera module (Use the CSI-2 cable provided with the camera module)
-  - STEVAL-66GYMAI VD66GY Camera module (Use the CSI-2 cable provided with the camera module)
+  - [STEVAL-55G1MBI](https://www.st.com/en/evaluation-tools/steval-55g1mbi.html) VD55G1 Camera module (Use the CSI-2 cable provided with the camera module)
+  - [STEVAL-66GYMAI1](https://www.st.com/en/evaluation-tools/steval-66gymai.html) VD66GY Camera module (Use the CSI-2 cable provided with the camera module)
+  - [STEVAL-1943-MC1](https://www.st.com/en/evaluation-tools/steval-1943-mc1.html) VD1943 Camera module (Use the CSI-2 cable provided with the camera module)
 
 ![Board](_htmresc/ImageBoard.JPG)
 
@@ -47,7 +48,7 @@ STM32N6570-DK board with MB1854B IMX335.
 - IAR Embedded Workbench for Arm (**EWARM 9.40.1**) + N6 patch ([**EWARMv9_STM32N6xx_V1.0.0**](STM32Cube_FW_N6/Utilities/PC_Software/EWARMv9_STM32N6xx_V1.0.0.zip))
 - [STM32CubeIDE](https://www.st.com/content/st_com/en/products/development-tools/software-development-tools/stm32-software-development-tools/stm32-ides/stm32cubeide.html) (**STM32CubeIDE 1.17.0**)
 - [STM32CubeProgrammer](https://www.st.com/en/development-tools/stm32cubeprog.html) (**v2.18.0**)
-- [STEdgeAI](https://www.st.com/en/development-tools/stedgeai-core.html) (**v2.2.0**)
+- [STEdgeAI](https://www.st.com/en/development-tools/stedgeai-core.html) (**v3.0.0**)
 
 ## Boot Modes
 
@@ -65,18 +66,26 @@ You can see application messages by attaching a console application to the ST-Li
 - No parity.
 - One stop bit.
 
-## Quickstart Using Prebuilt Binaries
+## Tracking
 
-### Flash Prebuilt Binaries
+When tracking is enabled (enabled by default), post-processing is applied to
+filters boxes and keypoints over frames to provide a more stable output. You can
+disable/enable tracking at runtime by pressing the USER1 button on the board.
 
-Three binaries must be programmed into the board's external flash using the following procedure:
+## Quickstart Using Prebuilt Binary
+
+### Flash Prebuilt Binary
+
+The binary must be programmed into the board's external flash using the following procedure:
 
   1. Set both switches to the right side.
-  2. Program `Binary/ai_fsbl.hex` (To be done once) (First stage boot loader).
-  3. Program `Binary/network_data.hex` (parameters of the networks; To be changed only when the network is changed).
-  4. Program `Binary/x-cube-n6-ai-multi-pose-estimation.hex` (firmware application).
-  5. Set both switches to the left side.
-  6. Power cycle the board.
+  2. Press NRST button to reset the board.
+  3. Program `Binary/x-cube-n6-ai-multi-pose-estimation.hex`.
+  4. Set both switches to the left side.
+  5. Press NRST to reset and start the application.
+  6. The application will start and you should see the camera output. When
+     pointing the camera to a person, you should see a skeleton-based
+     representation with detected keypoints.
 
 ### How to Program Hex Files Using STM32CubeProgrammer UI
 
@@ -89,13 +98,6 @@ Make sure to have the STM32CubeProgrammer bin folder added to your path.
 ```bash
 export DKEL="<STM32CubeProgrammer_N6 Install Folder>/bin/ExternalLoader/MX66UW1G45G_STM32N6570-DK.stldr"
 
-# First Stage Boot Loader
-STM32_Programmer_CLI -c port=SWD mode=HOTPLUG -el $DKEL -hardRst -w Binary/ai_fsbl.hex
-
-# Network Parameters and Biases
-STM32_Programmer_CLI -c port=SWD mode=HOTPLUG -el $DKEL -hardRst -w Binary/network_data.hex
-
-# Application Firmware
 STM32_Programmer_CLI -c port=SWD mode=HOTPLUG -el $DKEL -hardRst -w Binary/x-cube-n6-ai-multi-pose-estimation.hex
 ```
 
@@ -169,10 +171,16 @@ Once your app is built with Makefile, STM32CubeIDE, or EWARM, you must add a sig
 STM32_SigningTool_CLI -bin build/Project.bin -nk -t ssbl -hv 2.3 -o build/Project_sign.bin
 ```
 
-You can program the signed bin file at the address `0x70100000`.
+You can program the FSBL, the signed bin file at the address `0x70100000` and the network parameters:
 
 ```bash
 export DKEL="<STM32CubeProgrammer_N6 Install Folder>/bin/ExternalLoader/MX66UW1G45G_STM32N6570-DK.stldr"
+
+# First Stage Boot Loader
+STM32_Programmer_CLI -c port=SWD mode=HOTPLUG -el $DKEL -hardRst -w FSBL/ai_fsbl.hex
+
+# Network Parameters and Biases
+STM32_Programmer_CLI -c port=SWD mode=HOTPLUG -el $DKEL -hardRst -w Model/network_data.hex
 
 # Adapt build path to your IDE
 STM32_Programmer_CLI -c port=SWD mode=HOTPLUG -el $DKEL -hardRst -w build/Project_sign.bin 0x70100000
@@ -183,5 +191,20 @@ Note: Only the App binary needs to be programmed if the FSBL and network_data.he
 __Set both switches to the left side.__
 
 Do a power cycle to boot from the external flash.
+
+## How to update my project with a new version of ST Edge AI
+
+The neural network model files (`network.c/h`, `stai_network.c/h`, etc.)
+included in this project were generated using
+[STEdgeAI](https://www.st.com/en/development-tools/stedgeai-core.html) version
+3.0.0.
+
+Using a different version of STEdgeAI to generate these model files may result
+in the following compile-time error: `Possible mismatch in ll_aton library
+used`.
+
+If you encounter this error, please follow the STEdgeAI instructions on
+[How to update my project with a new version of ST Edge AI Core](https://stedgeai-dc.st.com/assets/embedded-docs/stneuralart_faqs_update_version.html)
+to update your project.
 
 ## Known Issues and Limitations

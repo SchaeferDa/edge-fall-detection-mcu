@@ -23,19 +23,15 @@ accordingly.
 
 ## 2. Generate C-Model from TFLite Model
 
-To generate the `network.c`, `network_ecblobs.h`, and the file containing network parameters, you must install STM32Cube.AI.
+To generate the `stai_network.c`, `network_ecblobs.h`, and the file containing network parameters, you must install STEdgeAI.
 
 1. Add `<folderInstall>/Utilities/<your_os>/` to your path to have `stedgeai` known by your shell.
 2. Add `<stm32cubeide_folderInstall>/plugins/com.st.stm32cube.ide.mcu.externaltools.gnu-tools-for-<plugin_version>/tools/bin` to your path to have `arm-none-eabi-objcopy` known by your bash.
 
 ```bash
 cd Model
-stedgeai generate --no-inputs-allocation --no-outputs-allocation --model yolov8n_256_quant_pc_uf_pose_coco-st.tflite --target stm32n6 --st-neural-art default@user_neuralart.json
-cp st_ai_output/network.h .
-cp st_ai_output/network_ecblobs.h .
-cp st_ai_output/network.c .
-cp st_ai_output/network_atonbuf.xSPI2.raw network_data.xSPI2.bin
-arm-none-eabi-objcopy -I binary network_data.xSPI2.bin --change-addresses 0x70380000 -O ihex network_data.hex
+stedgeai generate --no-inputs-allocation --no-outputs-allocation --model yolov8n_256_quant_pc_uf_pose_coco-st.tflite --target stm32n6 --st-neural-art default@user_neuralart.json -o .
+arm-none-eabi-objcopy -I binary network_atonbuf.xSPI2.raw --change-addresses 0x70380000 -O ihex network_data.hex
 cd ..
 ```
 

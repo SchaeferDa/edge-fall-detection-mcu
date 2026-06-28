@@ -40,6 +40,11 @@
 #include "stai_network.h"
 #include "network.h"
 #include "utils.h"
+#ifdef FALL_DETECTION_MODULE
+#include "fall_preprocessor.h"
+#include "fall_classifier.h"
+#include "fall_network.h"
+#endif
 
 #ifndef APP_VERSION_STRING
 #define APP_VERSION_STRING "dev"
@@ -143,6 +148,10 @@ typedef struct {
   uint32_t inf_ms;
   uint32_t pp_ms;
   uint32_t disp_ms;
+#ifdef FALL_DETECTION_MODULE
+  int      fall_detected;   /* 1 if fall event is active */
+  float    fall_prob;       /* raw P(fall) from last inference */
+#endif
 } display_info_t;
 
 typedef struct {
@@ -263,6 +272,33 @@ static trk_tbox_t tboxes[2 * AI_MPE_YOLOV8_PP_MAX_BOXES_LIMIT];
 static trk_dbox_t dboxes[AI_MPE_YOLOV8_PP_MAX_BOXES_LIMIT];
 static trk_ctx_t trk_ctx;
 #endif
+
+/* ---- fall detection state ------------------------------------------------ */
+#ifdef FALL_DETECTION_MODULE
+/* Shared pose frame written by pp_thread, read by fall_detect_thread */
+typedef struct {
+  mpe_pp_outBuffer_t detects[AI_MPE_YOLOV8_PP_MAX_BOXES_LIMIT];
+  int                nb_detect;
+} fall_pose_frame_t;
+
+static fall_pose_frame_t    fall_pose_frame;
+static SemaphoreHandle_t    fall_pose_sem;       /* new frame available     */
+static StaticSemaphore_t    fall_pose_sem_buf;
+static SemaphoreHandle_t    fall_pose_lock;      /* protect fall_pose_frame */
+static StaticSemaphore_t    fall_pose_lock_buf;
+
+/* FallDetector network buffers (all in SRAM .bss) */
+static uint8_t fall_network_ctx[STAI_FALL_NETWORK_CONTEXT_SIZE]          ALIGN_32;
+static uint8_t fall_activations[STAI_FALL_NETWORK_ACTIVATIONS_SIZE_BYTES] ALIGN_32;
+static uint8_t fall_input_buf[STAI_FALL_NETWORK_IN_SIZE_BYTES]            ALIGN_32;
+static uint8_t fall_output_buf[STAI_FALL_NETWORK_OUT_SIZE_BYTES]          ALIGN_32;
+
+static fall_preprocessor_t  fall_pp_state;
+static fall_classifier_t    fall_cls_state;
+
+static StaticTask_t         fall_thread;
+static StackType_t          fall_thread_stack[4 * configMINIMAL_STACK_SIZE];
+#endif /* FALL_DETECTION_MODULE */
 
 static int is_cache_enable()
 {
@@ -801,6 +837,32 @@ static void Display_NetworkOutput(display_info_t *info)
     Display_NetworkOutput_Tracking(info);
   else
     Display_NetworkOutput_NoTracking(info);
+
+#ifdef FALL_DETECTION_MODULE
+  {
+    /* Always show last classification result bottom-left */
+    const char *label = info->fall_detected ? "FALL" : "ok";
+    uint32_t    color = info->fall_detected ? UTIL_LCD_COLOR_RED : UTIL_LCD_COLOR_GREEN;
+
+    UTIL_LCD_SetFont(&Font20);
+    UTIL_LCD_SetTextColor(color);
+    UTIL_LCDEx_PrintfAt(0, lcd_fg_area.YSize - Font20.Height * 2,
+                        LEFT_MODE, "Fall: %s", label);
+    UTIL_LCDEx_PrintfAt(0, lcd_fg_area.YSize - Font20.Height,
+                        LEFT_MODE, "P(fall): %.2f", info->fall_prob);
+    UTIL_LCD_SetTextColor(UTIL_LCD_COLOR_WHITE);
+
+    /* Large centred FALL alert */
+    if (info->fall_detected) {
+      UTIL_LCD_SetFont(&Font24);
+      UTIL_LCD_SetTextColor(UTIL_LCD_COLOR_RED);
+      UTIL_LCDEx_PrintfAt(0, lcd_fg_area.YSize / 2 - Font24.Height,
+                          CENTER_MODE, "FALL");
+      UTIL_LCD_SetFont(&Font20);
+      UTIL_LCD_SetTextColor(UTIL_LCD_COLOR_WHITE);
+    }
+  }
+#endif
 }
 
 static void inference_run(stai_network *network_instance)
@@ -1097,11 +1159,75 @@ static void pp_thread_fct(void *arg)
     ret = xSemaphoreGive(disp.lock);
     assert(ret == pdTRUE);
 
+#ifdef FALL_DETECTION_MODULE
+    /* Publish latest detections for fall_detect_thread (non-blocking write) */
+    if (xSemaphoreTake(fall_pose_lock, 0) == pdTRUE) {
+      fall_pose_frame.nb_detect = pp_output.nb_detect;
+      for (i = 0; i < pp_output.nb_detect; i++)
+        fall_pose_frame.detects[i] = pp_output.pOutBuff[i];
+      xSemaphoreGive(fall_pose_lock);
+      /* Signal fall_detect_thread; ignore error if semaphore already given */
+      xSemaphoreGive(fall_pose_sem);
+    }
+#endif /* FALL_DETECTION_MODULE */
+
     bqueue_put_free(&nn_output_queue);
     /* It's possible xqueue is empty if display is slow. So don't check error code that may by pdFALSE in that case */
     xSemaphoreGive(disp.update);
   }
 }
+
+#ifdef FALL_DETECTION_MODULE
+static void fall_detect_thread_fct(void *arg)
+{
+  fall_pose_frame_t local_frame;
+  float window[FALL_SEQ_LEN][FALL_FEATURES];
+  float p_fall;
+  int ret;
+  int fall_event;
+
+  /* Init preprocessor state */
+  fall_preprocessor_init(&fall_pp_state);
+
+  /* Init classifier (buffer pointers already set in app_run) */
+  ret = fall_classifier_init(&fall_cls_state);
+  assert(ret == 0);
+
+  while (1)
+  {
+    /* Wait for a new pose frame from pp_thread */
+    ret = xSemaphoreTake(fall_pose_sem, portMAX_DELAY);
+    assert(ret == pdTRUE);
+
+    /* Copy the shared frame under lock */
+    ret = xSemaphoreTake(fall_pose_lock, portMAX_DELAY);
+    assert(ret == pdTRUE);
+    local_frame = fall_pose_frame;
+    xSemaphoreGive(fall_pose_lock);
+
+    /* Run preprocessing; window_out is valid only when return == 1 */
+    ret = fall_preprocessor_push(&fall_pp_state,
+                                  local_frame.detects,
+                                  local_frame.nb_detect,
+                                  window);
+    if (!ret)
+      continue;
+
+    /* Run classifier */
+    fall_event = fall_classifier_run(&fall_cls_state, window, &p_fall);
+
+    /* Update display info */
+    ret = xSemaphoreTake(disp.lock, portMAX_DELAY);
+    assert(ret == pdTRUE);
+    disp.info.fall_detected = fall_event;
+    disp.info.fall_prob     = p_fall;
+    xSemaphoreGive(disp.lock);
+
+    if (fall_event)
+      printf("FALL DETECTED: P(fall)=%.3f\n", p_fall);
+  }
+}
+#endif /* FALL_DETECTION_MODULE */
 
 static void dp_update_drawing_area()
 {
@@ -1211,6 +1337,22 @@ void app_run()
   assert(ret == BSP_ERROR_NONE);
 #endif
 
+#ifdef FALL_DETECTION_MODULE
+  /* Init fall detection semaphores */
+  fall_pose_sem  = xSemaphoreCreateCountingStatic(1, 0, &fall_pose_sem_buf);
+  assert(fall_pose_sem);
+  fall_pose_lock = xSemaphoreCreateMutexStatic(&fall_pose_lock_buf);
+  assert(fall_pose_lock);
+
+  /* Wire buffer pointers into classifier state */
+  fall_cls_state.network_ctx = fall_network_ctx;
+  fall_cls_state.activations = fall_activations;
+  fall_cls_state.input_buf   = fall_input_buf;
+  fall_cls_state.output_buf  = fall_output_buf;
+  /* fall_classifier_init() and fall_preprocessor_init() are called inside
+   * fall_detect_thread_fct at startup, so no init needed here.            */
+#endif
+
   cpuload_init(&cpu_load);
 
   /*** Camera Init ************************************************************/  
@@ -1240,6 +1382,12 @@ void app_run()
   hdl = xTaskCreateStatic(isp_thread_fct, "isp", configMINIMAL_STACK_SIZE * 2, NULL, isp_priority, isp_thread_stack,
                           &isp_thread);
   assert(hdl != NULL);
+
+#ifdef FALL_DETECTION_MODULE
+  hdl = xTaskCreateStatic(fall_detect_thread_fct, "fall", configMINIMAL_STACK_SIZE * 4, NULL,
+                          FREERTOS_PRIORITY(-1), fall_thread_stack, &fall_thread);
+  assert(hdl != NULL);
+#endif
 }
 
 int CMW_CAMERA_PIPE_FrameEventCallback(uint32_t pipe)

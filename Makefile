@@ -148,6 +148,7 @@ include mks/freertos.mk
 include mks/gcc.mk
 include mks/iar.mk
 include Lib/tracker/tracker.mk
+include FallDetector/fall_detector.mk
 
 #######################################
 # build the application

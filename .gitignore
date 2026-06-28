@@ -1,0 +1,110 @@
+# Ignore byte-compiled / optimized / DLL files
+__pycache__/
+*.py[cod]
+*$py.class
+
+# C extensions
+*.so
+
+# Distribution / packaging
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+pip-wheel-metadata/
+share/python-wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+MANIFEST
+
+# PyInstaller
+*.manifest
+*.spec
+
+# Unit test / coverage reports
+htmlcov/
+.tox/
+.nox/
+.coverage
+.coverage.*
+.cache
+nosetests.xml
+coverage.xml
+*.cover
+*.py,cover
+.hypothesis/
+.pytest_cache/
+
+# Jupyter Notebook
+.ipynb_checkpoints
+
+# IPython
+profile_default/
+ipython_config.py
+
+# pyenv
+.python-version
+
+# Environments
+.env
+.venv
+env/
+venv/
+ENV/
+env.bak/
+venv.bak/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+
+# Project specific
+src/video_dataset/**
+!src/video_dataset/unpack_dataset.sh
+src/pose_dataset/
+*.mp4
+*.avi
+*.mov
+*.flv
+*.mkv
+
+# Logs
+*.log
+logs/
+
+Model/st_ai_ws/
+Model/network_c_info.json
+Model/network_data.c
+Model/network_data.h
+Model/network_details.h
+Model/network.c
+Model/network.h
+Model/LICENSE.txt
+FallDetector/Model/st_ai_ws/
+FallDetector/Model/fall_network_c_info.json
+FallDetector/Model/fall_network_data.c
+FallDetector/Model/fall_network_data.h
+FallDetector/Model/fall_network_details.h
+FallDetector/Model/fall_network.c
+FallDetector/Model/fall_network.h
+Model/network_atonbuf.xSPI2.raw
+Model/network_data.hex
+Model/network_ecblobs.h
+Model/network_generate_report.txt
+STM32CubeIDE/.cproject.bak
+STM32CubeIDE/.project.bak
+Debug/

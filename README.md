@@ -19,7 +19,7 @@ Two-stage fall detection on the STM32N6570-DK evaluation board.
 
 ```mermaid
 flowchart TD
-    CAM["📷 Camera (IMX335)"]
+    CAM["Camera (IMX335)"]
     YOLO["YOLOv8n Pose - N6-NPU, 256x256, INT8"]
     PRE["Select dominant person\nScale → 256×256\nHip-center + shoulder-scale\nZero-out low-conf keypoints\nSliding window FIFO 30×stride 5\nZ-score normalization"]
     CLS["Quantize → INT8\nTiny Temporal CNN (STEdgeAI)\nDequantize → P(fall)\nConsecutive-window vote (3×)"]
@@ -125,7 +125,7 @@ make -j8            # directly
 - After regenerating the model, also update the scaler header:
 
 ```bash
-python learning/tools/gen_scaler_header.py learning/training/checkpoints/scaler.npz
+python tools/gen_scaler_header.py ../learning/training/checkpoints/scaler.npz
 ```
 
 ## Flash
